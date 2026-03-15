@@ -98,7 +98,7 @@ class Session:
                 return m.content[:60].replace("\n", " ") + ("…" if len(m.content) > 60 else "")
         return "(empty)"
 
-    def add_turn(self, role: str, content: str, **kwargs) -> None:
+    def add_message(self, role: str, content: str, **kwargs) -> None:
         self.messages.append(Message(role=role, content=content, **kwargs))
 
     def get_api_messages(self, max_history: int = 50) -> List[dict]:

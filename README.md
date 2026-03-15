@@ -47,45 +47,74 @@ cd mind-shell
 pip install -e .
 ```
 
-### Set up API Key
+### Option 1: Using Anthropic Claude (Cloud)
 
 Get your Anthropic API key from [console.anthropic.com](https://console.anthropic.com/):
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-### First Chat
-
-```bash
 mind_shell chat
 ```
 
-You'll see:
+### Option 2: Using Ollama (Local LLM) — 🔥 Recommended for Development
+
+**1. Install Ollama:**
+- Download from [ollama.ai](https://ollama.ai)
+- Or on macOS: `brew install ollama`
+- Or on Linux: `curl https://ollama.ai/install.sh | sh`
+
+**2. Start Ollama server:**
+```bash
+ollama serve
+# Runs on http://localhost:11434
 ```
-╔═══════════════════════════════════╗
-║      NEXUS CLI  ·  v0.1.0         ║
-╚═══════════════════════════════════╝
 
-Type your message to start chatting.
-Commands: /help · /export · /session · /tools · /clear · /exit
-
-Session: a1b2c3d4 · Model: claude-opus-4-5 · Tools: 7 enabled
-
-you › 
+**3. Pull a model** (in another terminal):
+```bash
+ollama pull mistral          # Fast, good quality (7B)
+# or
+ollama pull llama2           # Larger, slower (7B)
+# or
+ollama pull neural-chat      # Chat-optimized (7B)
 ```
 
-Type your question and press Enter. Claude will respond with streaming output:
+**4. Run MindShell with Ollama:**
+```bash
+# Interactive mode
+mind_shell chat --provider ollama --model mistral
 
+# Or create a local config file: mind-shell.toml
+cat > mind-shell.toml << 'EOF'
+[llm]
+provider = "ollama"
+model = "mistral"
+base_url = "http://localhost:11434"
+max_tokens = 2048
+EOF
+
+mind_shell chat
 ```
-you › what's in this directory?
 
-nexus › 
-Looking at your current directory...
+**5. Try the minimal example:**
+```bash
+python main.py
+```
 
-[Directory listing with files and structure]
+### Model Recommendations
 
-↑450 ↓380 tokens
+| Model | Size | Speed | Quality | Best For |
+|-------|------|-------|---------|----------|
+| **mistral** | 7B | ⚡⚡⚡ | ⭐⭐⭐⭐ | General tasks, **recommended** |
+| neural-chat | 7B | ⚡⚡⚡ | ⭐⭐⭐⭐ | Chat, slightly smaller |
+| llama2 | 7B | ⚡⚡ | ⭐⭐⭐ | Stable, safe |
+| mistral-openorca | 7B | ⚡ | ⭐⭐⭐⭐ | Instruction-following |
+| mixtral | 46B | 🐢 | ⭐⭐⭐⭐⭐ | Best quality (requires 24GB RAM) |
+
+**Quick setup:**
+```bash
+ollama pull mistral
+ollama serve &
+python main.py
 ```
 
 ---
@@ -330,6 +359,307 @@ Check that `~/.mind-shell/sessions` directory is writable:
 mkdir -p ~/.mind-shell/sessions
 chmod 755 ~/.mind-shell/sessions
 ```
+
+### Ollama not connecting
+Ensure Ollama is running:
+```bash
+# Check if service is running
+curl http://localhost:11434/api/tags
+
+# If not, start it
+ollama serve
+```
+
+---
+
+## 🚀 What to Build Next?
+
+### Priority 1: Core Workflow (Next 2 weeks)
+- [ ] **Fix Tool Integration** — Ensure tools properly return structured results to LLM
+  - Add `tool_result` message type in session
+  - Implement tool calling loop in `Agent` class
+  - Add error handling when tools fail
+
+- [ ] **Refine Agent Mode** — Make autonomous task execution work smoothly
+  - Implement proper `plan_and_act` loop
+  - Add iteration counter and max_iterations limit
+  - Implement fallback strategies
+
+- [ ] **ChatUI Polish** — Improve interactive experience
+  - Add streaming tokens display
+  - Show token usage (input/output)
+  - Better error messages
+  - Support for `/commands` within chat
+
+### Priority 2: Experience (3-4 weeks)
+- [ ] **Memory System** — Add context-aware memory
+  - Store summaries of past conversations
+  - Embedding-based semantic search of session history
+  - Auto-load relevant context on session resume
+
+- [ ] **Plugin System** — Allow custom tools
+  - Define plugin interface
+  - Load plugins from `~/.mind-shell/plugins/`
+  - Hot-reload during runtime
+
+- [ ] **Web UI** — Optional browser interface
+  - Simple Flask/FastAPI server
+  - WebSocket for real-time chat
+  - Session management dashboard
+
+### Priority 3: Advanced Features (Weeks 5+)
+- [ ] **Multi-turn Tool Calls** — Proper function calling
+  - Handle concurrent tool calls
+  - Dependency resolution between tools
+  - Async tool execution
+
+- [ ] **Knowledge Base Integration**
+  - RAG (Retrieval Augmented Generation)
+  - Vector database support (Milvus, Weaviate, Pinecone)
+  - Document indexing
+
+- [ ] **Monitoring & Logging**
+  - OpenTelemetry integration
+  - Cost tracking (tokens, API calls)
+  - Performance metrics dashboard
+
+---
+
+## 🏗️ Architectural Improvements
+
+### Current State
+```
+User Input → CLI → LLM → Tools → Session Store
+```
+
+### Recommended Enhancements
+
+#### 1. **Tool Execution Engine** ⭐ HIGH Priority
+```
+┌─────────────────────────────────────────┐
+│  Tool Orchestrator (NEW)                 │
+├─────────────────────────────────────────┤
+│ Responsibilities:                        │
+│ • Parse tool calls from LLM              │
+│ • Execute tools (sync & async)           │
+│ • Handle errors and retries              │
+│ • Format results back to LLM context     │
+│ • Track execution history                │
+└─────────────────────────────────────────┘
+       ↓
+   Tools Layer
+       ↓
+   System (filesystem, shell, git, etc.)
+```
+
+**File:** `mind_shell/core/tool_executor.py`
+```python
+class ToolExecutor:
+    async def execute(self, tool_call: ToolCall) -> ToolResult:
+        # Dispatch to tool
+        # Handle errors
+        # Format result
+        pass
+    
+    def validate(self, tool_call: ToolCall) -> bool:
+        # Check permissions
+        # Validate inputs
+        pass
+```
+
+#### 2. **Message Protocol** - Standardize Communication
+```python
+# Current: Multiple message formats
+# Proposed: Unified protocol
+
+class Message(BaseModel):
+    role: Literal["user", "assistant", "tool"]
+    content: str
+    tool_name: Optional[str] = None
+    tool_call_id: Optional[str] = None
+    metadata: Dict[str, Any] = {}  # logs, timing, etc.
+    timestamp: datetime
+```
+
+#### 3. **Context Builder** - Smart Context Window Management
+```
+Issue: Too many messages overflow context window
+
+Solution:
+┌──────────────────────────┐
+│ Smart Context Builder    │
+├──────────────────────────┤
+│ • Summarize old messages │
+│ • Keep recent N messages │
+│ • Prioritize tool calls  │
+│ • Track token usage      │
+└──────────────────────────┘
+```
+
+**File:** `mind_shell/core/context_builder.py` (improve existing)
+
+#### 4. **Session Format Upgrade** - Better Persistence
+**Current:** TOML frontmatter + Markdown
+**Issue:** Tool calls not properly logged
+
+**Proposed:**
+```markdown
+---
+session_id: abc123
+version: 2  # NEW
+---
+
+# Session Title
+
+## Message 1 [USER]
+content...
+
+## Message 2 [ASSISTANT]
+content...
+
+## Tool Call 3 [SYSTEM]
+tool: filesystem
+input: {}
+output: {}
+duration_ms: 145
+status: success
+---
+```
+
+#### 5. **Error Handling & Recovery** - Graceful Degradation
+```python
+class ToolResult:
+    success: bool
+    data: Optional[Any]
+    error: Optional[str]
+    suggestion: Optional[str]  # Help user fix
+    retry_args: Optional[Dict]  # Auto-retry config
+```
+
+Example:
+```
+Tool: shell | Command: "rm -rf /"
+Error: "Cannot execute destructive commands"
+Suggestion: "Did you mean 'rm -rf ./tmpdir'?"
+```
+
+#### 6. **Model Abstraction Layer** - Support More LLMs
+**Current:** Anthropic + OpenAI + Ollama
+**Improve:**
+```
+LLMClient (abstract)
+    ├── AnthropicClient
+    ├── OpenAIClient  
+    ├── OllamaClient
+    ├── GroqClient (NEW - super fast inference)
+    └── LocalLLMClient (LLaMA.cpp, etc.)
+```
+
+**Add:** Unified response format + capability detection
+
+#### 7. **Observability** - Track What's Happening
+```python
+# NEW: Metrics collection
+class ExecutionMetrics:
+    total_tokens: int
+    tool_calls: int
+    errors: int
+    duration_sec: float
+    cost_estimate: float  # For cloud models
+```
+
+---
+
+## 📊 Architecture Diagram (Enhanced)
+
+```
+┌──────────────────┐
+│   User Input     │
+│    (Chat/CLI)    │
+└────────┬─────────┘
+         │
+         ↓
+┌──────────────────────────────┐
+│    Command Parser & Router   │
+│  (understand intent)          │
+└────────┬─────────────────────┘
+         │
+         ├─→ Chat Mode?     ──→ ChatUI
+         ├─→ Agent Mode?    ──→ Agent Planner
+         √─→ Script Mode?   ──→ SingleShot
+         │
+         ↓
+┌──────────────────────────────┐
+│   Context Manager (NEW)      │
+│  • Build message history     │
+│  • Manage token budget       │
+│  • Compress old messages     │
+└────────┬─────────────────────┘
+         │
+         ↓
+┌──────────────────────────────┐
+│   LLM Client (Abstract)      │
+│  • Anthropic / OpenAI        │
+│  • Ollama / Groq             │
+│  • Unified response format   │
+└────────┬─────────────────────┘
+         │
+         ↓
+┌──────────────────────────────┐
+│  Tool Executor (NEW) ⭐       │
+│  • Parse tool calls          │
+│  • Validate & dispatch       │
+│  • Error handling            │
+│  • Format results for LLM    │
+└────────┬─────────────────────┘
+         │
+    ┌────┴────┬───────┬────────┬─────┐
+    ↓         ↓       ↓        ↓     ↓
+┌────────┐┌──────┐┌──────┐┌─────────┐
+│FileSystem WebAPI   Git  │Shell    │...
+│ Read   Search Fetch    │Execute
+│ Write  Scrape  Log    │Confirm
+└────────┘└──────┘└──────┘└─────────┘
+    │         │       │        │
+    └─────┬───┴───────┴────────┘
+         ↓
+    System (OS/Network)
+         │
+         ↓
+┌──────────────────────────────┐
+│  Session Manager             │
+│  • Store messages            │
+│  • Save to disk (.md, .json) │
+│  • Resume / resume from ID   │
+└──────────────────────────────┘
+```
+
+---
+
+## 🎯 Recommended Implementation Order
+
+1. **Tool Executor** (fixes critical issue with tool routing)
+2. **Message Protocol Upgrade** (foundation for everything)
+3. **Context Builder Improvements** (handle large conversations)
+4. **Error Handling & Recovery** (stability)
+5. **Plugin System** (extensibility)
+6. **Memory/RAG** (smarter responses)
+7. **Web UI** (accessibility)
+
+---
+
+## 📝 Development Checklist for Architecture
+
+- [ ] Create `ToolExecutor` class to handle async tool calls
+- [ ] Define unified `Message` protocol with metadata
+- [ ] Implement `ContextBuilder` with token budgeting
+- [ ] Add `ToolResult` with error handling
+- [ ] Create abstract `LLMClient` base class
+- [ ] Add observability with `ExecutionMetrics`
+- [ ] Update session format to v2
+- [ ] Add comprehensive error messages with suggestions
+- [ ] Create plugin interface definition
+- [ ] Add integration tests for tool execution loop
 
 ---
 

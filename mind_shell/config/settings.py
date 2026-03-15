@@ -17,6 +17,7 @@ import toml
 class LLMSettings:
     provider: str = "anthropic"
     model: str = "claude-opus-4-5"
+    base_url: str = "https://api.anthropic.com"
     fast_model: str = "claude-haiku-4-5"
     max_tokens: int = 8096
     temperature: float = 0.7
@@ -26,7 +27,7 @@ class LLMSettings:
 @dataclass
 class SessionSettings:
     auto_save: bool = True
-    save_dir: str = "~/.nexus/sessions"
+    save_dir: str = "~/.mind_shell/sessions"
     max_history: int = 50
 
     @property

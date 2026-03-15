@@ -34,7 +34,7 @@ console = Console()
 
 WELCOME_BANNER = """
 [bold cyan]╔═══════════════════════════════════╗[/bold cyan]
-[bold cyan]║      NEXUS CLI  ·  v0.1.0         ║[/bold cyan]
+[bold cyan]║      MIND SHELL ·  v0.1.0         ║[/bold cyan]
 [bold cyan]╚═══════════════════════════════════╝[/bold cyan]
 
 Type your message to start chatting.
