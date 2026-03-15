@@ -1,0 +1,33 @@
+# Nexus CLI — Configuration
+ 
+[llm]
+provider = "anthropic"           # anthropic | openai | ollama
+model = "claude-opus-4-5"        # Model used for deep tasks
+fast_model = "claude-haiku-4-5"  # Model used for quick tool calls
+max_tokens = 8096
+temperature = 0.7
+stream = true
+ 
+[session]
+auto_save = true
+save_dir = "~/.mind-shell/sessions"
+max_history = 50                 # Max messages kept in context window
+ 
+[tools]
+enabled = ["filesystem", "web_search", "web_fetch", "git", "shell", "pdf", "image", "code"]
+shell_confirm = true             # Ask before running shell commands
+shell_timeout = 30               # seconds
+web_search_provider = "brave"    # brave | serper | duckduckgo
+max_search_results = 5
+max_file_size_kb = 512
+ 
+[agent]
+mode = "confirm"                 # confirm | yolo
+max_iterations = 20
+plan_before_act = true
+ 
+[ui]
+theme = "dark"                   # dark | light
+markdown_render = true
+show_tool_calls = true
+show_token_count = true
